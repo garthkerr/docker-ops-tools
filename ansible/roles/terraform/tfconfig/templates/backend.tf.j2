@@ -1,0 +1,12 @@
+# {{ ansible_managed }}
+# @run tfconfig
+
+terraform {
+  backend "remote" {
+    organization = "{{ ops.namespace }}"
+
+    workspaces {
+      name = "{{ workspace }}"
+    }
+  }
+}

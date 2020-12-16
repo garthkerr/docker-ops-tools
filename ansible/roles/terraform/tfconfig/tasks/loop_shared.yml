@@ -1,0 +1,12 @@
+---
+
+- name: 'Create shared files : {{ relative_path }}'
+  template:
+    dest: '{{ current_path }}/{{ current_file.key }}'
+    src: shared.tf.j2
+    mode: 0644
+  vars:
+    shared_path: '{{ current_file.value }}'
+  loop: '{{ tfconfig.shared|dict2items }}'
+  loop_control:
+    loop_var: current_file

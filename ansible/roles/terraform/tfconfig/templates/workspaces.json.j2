@@ -1,0 +1,18 @@
+{%- set ns = namespace() -%}
+{%- set ns.iterator = {} -%}
+{%- for key, value in workspaces_all_paths.items() -%}
+  {%- set tfconfig = module_data[value] -%}
+  {%- set workspace_name = workspaces_all_names[key] -%}
+  {%- set workspace_path = workspaces_all_paths[key][2:] -%}
+  {%- if 'backend' in tfconfig -%}
+    {%- set ns.config = {}
+      | combine({
+          'id':        tfconfig.id,
+          'backend':   tfconfig.backend,
+          'path':      workspace_path,
+          'providers': tfconfig.providers | default({}),
+        }) -%}
+    {%- set ns.iterator = ns.iterator | combine({ workspace_name : ns.config }) -%}
+  {%- endif -%}
+{%- endfor -%}
+{{ ns.iterator | to_nice_json(indent=2) }}

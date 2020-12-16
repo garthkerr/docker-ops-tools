@@ -1,0 +1,38 @@
+#!/bin/bash
+# generate terraform files for one or all modules based on .tfconfig.yml and .tfvars.jsonnet
+# this script will potentially overwrite modified files
+set -e
+
+CB="\033[00;34m" # blue
+CG="\033[00;32m" # green
+CY="\033[00;33m" # yellow
+CN="\033[0m"     # none
+
+msg_done() {
+  echo -en "${CB}==> ${CG}[DONE] ${CN}${1}\n"
+}
+
+msg_info() {
+  echo -en "${CB}==> ${CY}[INFO] ${CN}${1}\n"
+}
+
+TOP=$(git rev-parse --show-toplevel)
+
+_run_in_container() {
+  if [[ -f ${PWD}/.tfconfig.yml ]]; then
+    module_path="${PWD/$TOP/.}"
+    msg_info "scope: ${module_path}"
+    cd "${TOP}"
+    ANSIBLE_DISPLAY_SKIPPED_HOSTS=false ansible-playbook \
+      -i localhost, -i /etc/ansible/hosts/vars \
+      /etc/ansible/tfconfig.yml -e module_path="${module_path}"
+  else
+    msg_info "scope: [root]"
+    cd "${TOP}"
+    ANSIBLE_DISPLAY_SKIPPED_HOSTS=false ansible-playbook \
+      -i localhost, -i /etc/ansible/hosts/vars \
+      /etc/ansible/tfconfig.yml
+  fi
+}
+
+_run_in_container

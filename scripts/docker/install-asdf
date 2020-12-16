@@ -1,0 +1,19 @@
+#!/bin/bash
+
+_install_asdf() {
+  git clone -c advice.detachedHead=false -q https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.7.8
+  echo 'source ~/.asdf/asdf.sh' > ~/.bashrc && . /root/.asdf/asdf.sh
+  echo 'bash -c ". ~/.asdf/asdf.sh && asdf $*"' > /bin/asdf
+  chmod +x /bin/asdf
+
+  asdf plugin add packer
+  echo '. ~/.asdf/asdf.sh && asdf reshim && packer "$@"' > /bin/packer
+  chmod +x /bin/packer
+
+  asdf plugin add terraform
+  echo '. ~/.asdf/asdf.sh && asdf reshim && terraform "$@"' > /bin/terraform
+  echo 'plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"' > ~/.terraformrc
+  chmod +x /bin/terraform
+}
+
+_install_asdf

@@ -1,0 +1,6 @@
+---
+
+- name: Generate variables
+  copy:
+    content: '{{ tfvars | to_nice_json(indent=2) }}'
+    dest: '{{ module_dir }}/.auto.tfvars.json'

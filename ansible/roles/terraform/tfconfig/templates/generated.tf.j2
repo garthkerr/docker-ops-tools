@@ -1,0 +1,85 @@
+# {{ ansible_managed }}
+# @run tfconfig
+
+################################################################################
+### generated versions
+################################################################################
+
+terraform {
+  required_version = "{{ tfconfig.version | default(terraform.default_version) }}"
+
+  {%- if tfconfig.providers is defined %}{{-"\n"}}
+  required_providers {
+  {% for provider, version in tfconfig.providers.items() %}
+  {% set version = version if version|string() != 'None' else terraform.default_providers[provider].version -%}
+    {{ provider }} = {
+      source  = "{{ terraform.default_providers[provider].source | default('hashicorp/' + provider) }}"
+      version = "{{ version }}"
+    }
+  {% endfor %}{{-""-}}}
+  {%- endif %}{{-"\n"-}}
+}{{"\n"}}
+
+{%- if tfconfig.providers is defined %}{{-"\n"-}}
+################################################################################
+### generated providers
+################################################################################
+{% for provider, version in tfconfig.providers.items() %}
+{% set template  = './providers/' + provider + '.tf.j2' %}
+{% set providers = ['ansiblevault', 'aws'] %}
+{{ "\n" + lookup('template', template) if provider in providers -}}
+{% endfor %}
+{% endif %}
+{% if tfconfig.requires is defined %}
+
+################################################################################
+### generated requires
+################################################################################
+
+{% for key, value in tfconfig.requires.items() %}
+{{-"\n"-}}
+data terraform_remote_state {{ key }} {
+  backend = "remote"
+
+  config = {
+    organization = "{{ ops.namespace }}"
+    workspaces   = { name = "{{ value }}" }
+  }
+}
+{% endfor %}
+{% endif %}
+
+################################################################################
+### generated locals
+################################################################################
+
+locals {
+  workspace_name = "{{ workspace }}"
+}
+{% if tfconfig.variables is defined and variables|length > 0 %}
+
+################################################################################
+### generated variables
+################################################################################
+
+{% for key in variables %}
+variable "{{ key }}" {}
+{% endfor %}
+{% endif %}
+
+{%- if tfconfig.vault is defined %}{{-"\n"-}}
+################################################################################
+### generated vault keys
+################################################################################
+{% for key, value in tfconfig.vault.items() %}{{-"\n"-}}
+data "ansiblevault_path" "{{ key }}" {
+  key  = "{{ key }}"
+  path = ".vault.yml"
+}
+{% endfor %}
+{% for key, value in tfconfig.vault.items() %}{{-"\n"-}}
+locals {
+  vault_{{ key | lower }} = lookup(data.ansiblevault_path.{{ key }}, "value")
+}
+{% endfor %}
+{% endif %}

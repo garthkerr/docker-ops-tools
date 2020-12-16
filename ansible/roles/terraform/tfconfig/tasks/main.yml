@@ -1,0 +1,108 @@
+---
+
+- name: Gather terraform module paths
+  shell: |-
+    gathered_paths=$(find ./terraform -name ".tfconfig.yml" \
+      -not -path "*vendor*" \
+      -not -path "*.terraform*")
+    for path in $gathered_paths; do
+      dir=$(dirname "${path}")
+      [[ ! -f "$dir/.tfignore" ]] && echo "$dir"
+    done
+  args:
+    chdir: '{{ awd }}'
+  changed_when: false
+  register: gathered_paths
+
+- name: Set workspaces
+  set_fact:
+    module_paths: '{{ [ module_path ] if module_path is defined else gathered_paths.stdout_lines }}'
+    module_all_paths: '{{ gathered_paths.stdout_lines }}'
+
+- name: Sort workspaces
+  set_fact:
+    workspaces_hash: "{{ module_paths|sort|map('hash', 'md5')|list }}"
+    workspaces_path: '{{ module_paths|sort }}'
+    workspaces_all_hash: "{{ module_all_paths|sort|map('hash', 'md5')|list }}"
+    workspaces_all_name: |-
+      {{- module_all_paths
+        | sort
+        | replace('/', '_')
+        | replace('._terraform_', '')
+        | replace('environments_', 'e_')
+        | replace('aws-us-east-', 'aws_use')
+        | replace('aws-us-west-', 'aws_usw') -}}
+    workspaces_all_path: '{{ module_all_paths|sort }}'
+
+- name: Create lookups
+  set_fact:
+    workspaces_paths: '{{ dict(workspaces_hash | zip(workspaces_path)) }}'
+    workspaces_all_names: '{{ dict(workspaces_all_hash | zip(workspaces_all_name)) }}'
+    workspaces_all_paths: '{{ dict(workspaces_all_hash | zip(workspaces_all_path)) }}'
+
+- name: Collect module configs
+  set_fact:
+    module_data: |-
+      {{- module_data
+        | default({})
+        | combine({ item.value : lookup('file', awd+'/'+item.value+'/.tfconfig.yml')|from_yaml }) -}}
+  with_dict: '{{ workspaces_all_paths }}'
+
+- name: Render .auto.tfvars.json
+  command: /bin/tfvars
+  args:
+    chdir: '{{ awd }}/{{ item.value }}'
+  with_dict: '{{ workspaces_paths }}'
+  changed_when: ('localhost' in tfvars.stdout and 'changed=0' not in tfvars.stdout) or ('< ' in tfvars.stdout)
+  register: tfvars
+
+- name: Copy shared files
+  include: loop_shared.yml
+  vars:
+    current_path: '{{ awd }}/{{ item.value }}'
+    relative_path: '{{ item.value }}'
+    tfconfig: "{{ module_data[item.value] }}"
+  when: module_data[item.value].shared is defined
+  with_dict: '{{ workspaces_paths }}'
+
+- name: Gather inherited variables
+  shell: |-
+    if [[ -e .auto.tfvars.json ]]; then
+      echo $( \
+        cat .auto.tfvars.json | jq 'try keys catch []' && \
+        echo $(hcltool variables.tf 2>/dev/null || echo '{}') | jq '.variable | try keys catch []') \
+        | jq -cs '.[0]-.[1]-["//"]'
+    else echo '{}'; fi
+  args:
+    chdir: '{{ awd }}/{{ item.value }}'
+  with_dict: '{{ workspaces_paths }}'
+  changed_when: false
+  register: inherited
+
+- name: Render backend.tf
+  template:
+    dest: '{{ awd }}/{{ item.value }}/backend.tf'
+    src: backend.tf.j2
+    mode: 0644
+  vars:
+    workspace: '{{ workspaces_all_names[item.key] }}'
+  when: module_data[item.value].backend is defined
+  with_dict: '{{ workspaces_paths }}'
+
+- name: Render generated.tf
+  template:
+    dest: '{{ awd }}/{{ item.value }}/generated.tf'
+    src: generated.tf.j2
+    mode: 0644
+  vars:
+    tfconfig: "{{ module_data[item.value] }}"
+    variables_query: "results[?item.key=='{{ item.key }}'].stdout"
+    variables: '{{ inherited | json_query(variables_query) | first | from_json }}'
+    workspace: '{{ workspaces_all_names[item.key] }}'
+  with_dict: '{{ workspaces_paths }}'
+
+- name: Render workspaces.json
+  template:
+    dest: '{{ awd }}/terraform/services/terraform/data/workspaces.json'
+    src: workspaces.json.j2
+    mode: 0644

@@ -1,0 +1,4 @@
+# {{ ansible_managed }}
+# @source ./terraform/shared/{{ shared_path }}
+
+{{ lookup('file', awd + '/terraform/shared/' + shared_path) }}

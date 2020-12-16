@@ -1,0 +1,31 @@
+#!/bin/bash
+# edit [and create] an ansible encrypted vault in the module path
+set -e
+
+CB="\033[00;34m" # blue
+CG="\033[00;32m" # green
+CY="\033[00;33m" # yellow
+CN="\033[0m"     # none
+
+msg_done() {
+  echo -en "${CB}==> ${CG}[DONE] ${CN}${1}\n"
+}
+
+msg_info() {
+  echo -en "${CB}==> ${CY}[INFO] ${CN}${1}\n"
+}
+
+TOP=$(git rev-parse --show-toplevel)
+
+_run_in_container() {
+  module_path="${PWD/$TOP/.}"
+  secrets_file="${module_path}/.vault.yml"
+  cd "${TOP}"
+  if [[ -f "${secrets_file}" ]]; then
+    ansible-vault edit "${secrets_file}"
+  else
+    ansible-vault create "${secrets_file}"
+  fi
+}
+
+_run_in_container

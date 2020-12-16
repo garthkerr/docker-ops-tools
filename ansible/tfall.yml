@@ -1,0 +1,10 @@
+# @cwd [root]
+# @run ansible-playbook /etc/ansible/tfall.yml -e command=plan
+# invoked with tfall script
+---
+
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  roles:
+    - terraform/tfall

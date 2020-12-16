@@ -1,0 +1,11 @@
+# @cwd [root]
+# @run ansible-playbook /etc/ansible/tfconfig.yml
+# @run ansible-playbook /etc/ansible/tfconfig.yml -e module_dir="/terraform/module/path"
+# invoked with tfconfig script
+---
+
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  roles:
+    - terraform/tfconfig

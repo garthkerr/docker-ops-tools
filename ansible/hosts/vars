@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+# must return valid json, consumed by ansible
+
+import json
+import os
+import sys
+
+awd = os.getcwd()
+vars_data = {'awd': awd}
+
+for conf in ['config']:
+  path = awd + '/config/' + conf + '.jsonnet'
+  if os.path.exists(path):
+    with os.popen(f'jsonnet -J {awd}/config {path}') as file:
+      data = file.read()
+    for k, v in json.loads(data).items():
+      vars_data[k] = v
+
+out = {
+  'all': {'vars': vars_data}
+}
+
+json.dump(out, sys.stdout)

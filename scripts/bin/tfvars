@@ -1,0 +1,46 @@
+#!/bin/bash
+# generate .auto.tfvars.json files in context of the module directory
+# this script will write the .auto.tfvars.json file to disk and report a diff if the contents are modified
+set -e
+
+CB="\033[00;34m" # blue
+CG="\033[00;32m" # green
+CY="\033[00;33m" # yellow
+CN="\033[0m"     # none
+
+msg_done() {
+  echo -en "${CB}==> ${CG}[DONE] ${CN}${1}\n"
+}
+
+msg_info() {
+  echo -en "${CB}==> ${CY}[INFO] ${CN}${1}\n"
+}
+
+TMP=$(mktemp)
+TOP=$(git rev-parse --show-toplevel)
+
+_run_in_container() {
+  if [[ -f ${PWD}/.tfvars.jsonnet ]]; then
+    data=$(jsonnet -J "${TOP}/config" "${PWD}/.tfvars.jsonnet")
+    if [[ ${data} == *"{{"* ]]; then
+      # process ansible template variables if present
+      data='{"tfvars":'${data}'}'
+      echo "$data" | jq -c -M | yq . --yaml-output > "${TMP}"
+      cd "${TOP}"
+      ANSIBLE_DISPLAY_SKIPPED_HOSTS=false ansible-playbook \
+        -i localhost, -i /etc/ansible/hosts/vars \
+        /etc/ansible/tfall.yml -e "@${TMP}" -e module_dir="${PWD}"
+    else
+      # no ansible processing required
+      file="${PWD}/.auto.tfvars.json"
+      data_formatted="$(echo "$data" | jq -j -M '{"//":"generated tfvars"} + .')\n"
+      # generate diff for changed_when
+      diff <(echo -en "${data_formatted}") <([[ -e "${file}" ]] && cat "${file}") || :
+      echo -en "${data_formatted}" > "${file}"
+    fi
+  else
+    msg_info "skipping: requires .tfvars.jsonnet"
+  fi
+}
+
+_run_in_container

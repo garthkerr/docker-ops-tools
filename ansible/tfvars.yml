@@ -1,0 +1,10 @@
+# @cwd [root]
+# @run ansible-playbook /etc/ansible/tfvars.yml -e @data.json -e module_dir="/terraform/module/path"
+# invoked with tfvars script
+---
+
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  roles:
+    - terraform/tfvars

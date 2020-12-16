@@ -1,0 +1,60 @@
+---
+
+- name: Gather terraform module paths
+  shell: |-
+    gathered_paths=$(find ./terraform -name ".tfconfig.yml" \
+      -not -path "*vendor*" \
+      -not -path "*.terraform*")
+    for path in $gathered_paths; do
+      dir=$(dirname "${path}")
+      [[ ! -f "$dir/.tfignore" ]] && echo "$dir"
+    done
+  args:
+    chdir: '{{ awd }}'
+  changed_when: false
+  register: gathered_paths
+
+- name: Set workspaces
+  set_fact:
+    module_paths: '{{ [ module_path ] if module_path is defined else gathered_paths.stdout_lines }}'
+    module_all_paths: '{{ gathered_paths.stdout_lines }}'
+
+- name: Sort workspaces
+  set_fact:
+    workspaces_hash: "{{ module_paths|sort|map('hash', 'md5')|list }}"
+    workspaces_path: '{{ module_paths|sort }}'
+    workspaces_all_hash: "{{ module_all_paths|sort|map('hash', 'md5')|list }}"
+    workspaces_all_path: '{{ module_all_paths|sort }}'
+
+- name: Create lookups
+  set_fact:
+    workspaces_paths: '{{ dict(workspaces_hash | zip(workspaces_path)) }}'
+
+- name: Run terraform fmt
+  shell: |-
+    terraform fmt
+  args:
+    chdir: '{{ awd }}/{{ item.value }}'
+  changed_when: 'terraform_out.stdout | length > 0'
+  register: terraform_out
+  when: module_cmd == 'fmt'
+  with_dict: '{{ workspaces_paths }}'
+
+- name: Run terraform init
+  shell: |-
+    terraform init
+  args:
+    chdir: '{{ awd }}/{{ item.value }}'
+  changed_when: false
+  when: module_cmd == 'init'
+  with_dict: '{{ workspaces_paths }}'
+
+- name: Run terraform plan
+  shell: |-
+    terraform plan
+  args:
+    chdir: '{{ awd }}/{{ item.value }}'
+  changed_when: "'did not detect' not in terraform_out.stdout"
+  register: terraform_out
+  when: module_cmd == 'plan'
+  with_dict: '{{ workspaces_paths }}'
