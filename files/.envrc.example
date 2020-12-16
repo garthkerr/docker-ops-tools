@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+source_up
+
+# shellcheck disable=SC2046
+# shellcheck disable=SC2196
+export $(egrep -v '^#' .env | xargs)
+
+commands=(
+  ansible/ops
+  ansible-config/ops
+  ansible-console/ops
+  ansible-galaxy/ops
+  ansible-inventory/ops
+  ansible-lint/ops
+  ansible-playbook/ops
+  ansible-vault/ops
+  tfall/ops
+  tfconfig/ops
+  tfvars/ops
+  tfvault/ops
+)
+
+_delegate() {
+  docker_run="docker-run"
+  compose_conf="docker-compose.yml"
+  private=".private/.direnv/bin"
+  shell_hash="#!/usr/bin/env bash"
+  working_dir="/app"
+
+  rm -rf "${private}" && mkdir -p "${private}"
+  PATH_add "${private}"
+
+  cat <<- EOF > "${private}/${docker_run}"
+		${shell_hash}
+		TOP="\$(git rev-parse --show-toplevel)"
+		docker-compose --file "\${TOP}/${compose_conf}" run --rm -w "\${PWD/\${TOP}/${working_dir}}" "\$@"
+		EOF
+  chmod +x "${private}/${docker_run}"
+
+  for i in "${commands[@]}"; do
+    command=$(echo "${i}" | cut -d'/' -f1)
+    service=$(echo "${i}" | cut -d'/' -f2)
+    echo -en \
+      "${shell_hash}\n${docker_run} ${service} bash -c \"${command} \$*\"" \
+      > "${private}/${command}" && chmod +x "${private}/${command}"
+  done
+}
+
+_delegate

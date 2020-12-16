@@ -21,6 +21,7 @@ COPY ./scripts/docker/install-asdf /tmp/install-asdf
 RUN set -x && bash -c "/tmp/install-asdf" && rm "/tmp/install-asdf"
 
 COPY ./ansible/ /etc/ansible/
+COPY ./files/ /etc/files/
 COPY ./scripts/bin/ /bin/
 
 WORKDIR /app
