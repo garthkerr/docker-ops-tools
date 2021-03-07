@@ -3,7 +3,9 @@ source_up
 
 # shellcheck disable=SC2046
 # shellcheck disable=SC2196
-export $(egrep -v '^#' .env | xargs)
+if [ -f .env ]; then
+  export $(egrep -v '^#' .env | xargs)
+fi
 
 commands=(
   ansible/ops

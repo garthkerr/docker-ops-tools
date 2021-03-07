@@ -101,8 +101,14 @@
     workspace: '{{ workspaces_all_names[item.key] }}'
   with_dict: '{{ workspaces_paths }}'
 
+- name: Check terraform service
+  stat:
+    path: '{{ awd }}/terraform/services/terraform/.tfconfig.yml'
+  register: terraform_service
+
 - name: Render workspaces.json
   template:
     dest: '{{ awd }}/terraform/services/terraform/data/workspaces.json'
     src: workspaces.json.j2
     mode: 0644
+  when: terraform_service.stat.exists == True

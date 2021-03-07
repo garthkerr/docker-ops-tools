@@ -1,0 +1,17 @@
+#!/bin/bash
+# make help output
+set -e
+
+CY="\033[00;33m" # yellow
+CN="\033[0m"     # none
+
+echo -en """
+  ${CY}cleanup${CN}     delete vendor files and shred blockbox secrets
+  ${CY}install${CN}     install vendor dependencies and decrypt blockbox
+
+  ${CY}setup-env${CN}   initialize .env file with instructions
+  ${CY}setup-mac${CN}   checks and installs brew and dependencies [global]
+
+  ${CY}use-direnv${CN}  overwrites the .envrc file and allows direnv
+  ${CY}use-docker${CN}  use docker environment
+  \n"""

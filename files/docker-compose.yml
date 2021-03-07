@@ -1,0 +1,16 @@
+version: '3.9'
+services:
+  ops:
+    # https://github.com/garthkerr/docker-ops-tools/blob/master/Dockerfile
+    # build: { context: ./docker/ops }
+    image: garthkerr/ops-tools:0.0.12
+    env_file:
+      - ./.env
+    volumes:
+      # - ${AWS_CONFIG_FILE:-~/.aws/config}:/root/.aws/config:ro
+      # - ${AWS_SHARED_CREDENTIALS_FILE:-~/.aws/credentials}:/root/.aws/credentials:ro
+      - ${HOME}/.ssh/:/root/.ssh/:ro
+      - ./.private/.ansible/:/root/.ansible/:rw
+      - ./.private/.terraform.d/:/root/.terraform.d/:rw
+      - ./.:/app
+    working_dir: /app

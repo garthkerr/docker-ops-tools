@@ -1,0 +1,8 @@
+#!/bin/bash
+# make install
+set -e
+
+ansible-galaxy install -r ansible/requirements/*
+find ./credentials -name '*.pem' -type f -exec chmod 600 {} \;
+blackbox_decrypt_all_files
+find ./credentials -name '*.pem' -type f -exec chmod 400 {} \;

@@ -1,0 +1,6 @@
+brew "blackbox"
+brew "direnv"
+brew "git"
+brew "jq"
+brew "jsonnet"
+cask "docker"

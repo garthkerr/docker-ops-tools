@@ -1,0 +1,13 @@
+#!/bin/bash
+# docker run -it -v $(pwd):/app garthkerr/ops-tools:0.0.12 bootstrap
+set -e
+
+_run_in_container() {
+  mkdir -p /app/config
+  mkdir -p /app/credentials
+  cp -i /etc/files/.editorconfig /app/.editorconfig
+  cp -i /etc/files/.envrc.example /app/.envrc
+  cp -iR /etc/files/* /app
+}
+
+_run_in_container

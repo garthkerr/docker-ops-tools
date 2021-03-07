@@ -1,0 +1,6 @@
+#!/bin/bash
+# make install
+set -e
+
+find ./credentials -name '*.pem' -type f -exec chmod 600 {} \;
+blackbox_shred_all_files
